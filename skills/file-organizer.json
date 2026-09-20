@@ -1,0 +1,21 @@
+{
+  "name": "file-organizer",
+  "description": "Tidy a directory by grouping files by type. Always dry-runs first.",
+  "version": "0.1.0",
+  "inputs": ["directory"],
+  "preconditions": ["filesystem tool enabled", "directory exists and is not a system path"],
+  "permissions": ["L1", "L2"],
+  "tools": ["filesystem"],
+  "steps": [
+    "list the directory and propose a grouping plan (dry-run)",
+    "show the plan and wait for user approval",
+    "move files only after approval, never delete"
+  ],
+  "validation": "no file deleted; every moved file listed with old and new path",
+  "failure_recovery": "stop on first error and report the untouched remainder",
+  "cautions": [
+    "dry-run first, move only after approval",
+    "never delete files; never touch system, home-root, or hidden paths",
+    "never follow symlinks outside the target directory"
+  ]
+}

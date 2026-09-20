@@ -1,0 +1,17 @@
+{
+  "name": "meeting-prep",
+  "description": "Gather people, decisions, and open threads before a meeting.",
+  "version": "0.1.0",
+  "inputs": ["meeting_topic"],
+  "preconditions": ["memory store reachable"],
+  "permissions": ["L0", "L1"],
+  "tools": ["memory_search"],
+  "steps": [
+    "recall people, past decisions, and commitments on the topic",
+    "list open questions and suggested agenda",
+    "present a one-page brief"
+  ],
+  "validation": "brief names attendees, decisions, and open questions",
+  "failure_recovery": "present whatever context exists and mark gaps",
+  "cautions": ["read-only: never messages attendees or schedules anything"]
+}

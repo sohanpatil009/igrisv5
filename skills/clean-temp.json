@@ -1,0 +1,21 @@
+{
+  "name": "clean-temp",
+  "description": "Clear stale temporary files inside a scoped temp directory.",
+  "version": "0.1.0",
+  "inputs": ["temp_directory", "older_than_days"],
+  "preconditions": ["filesystem tool enabled", "target is a temp/scratch dir, never home or system"],
+  "permissions": ["L2"],
+  "tools": ["filesystem"],
+  "steps": [
+    "verify the target path is a designated temp directory",
+    "list candidates older than the threshold (dry-run first)",
+    "delete only after user approval, then report freed space"
+  ],
+  "validation": "deleted paths listed; freed bytes reported",
+  "failure_recovery": "stop on first permission error and report remainder",
+  "cautions": [
+    "scoped temp dirs only: never home, documents, system, or hidden paths",
+    "dry-run plus approval before any delete",
+    "never follow symlinks; never delete files newer than the threshold"
+  ]
+}

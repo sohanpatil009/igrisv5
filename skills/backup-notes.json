@@ -1,0 +1,21 @@
+{
+  "name": "backup-notes",
+  "description": "Export the user's memory store to a timestamped backup file.",
+  "version": "0.1.0",
+  "inputs": ["backup_directory"],
+  "preconditions": ["filesystem tool enabled", "memory store reachable"],
+  "permissions": ["L1"],
+  "tools": ["filesystem"],
+  "steps": [
+    "export memories to JSON via the memory store",
+    "write to backup_directory with a timestamped filename",
+    "report file path, record count, and size"
+  ],
+  "validation": "backup file exists and record count matches the store",
+  "failure_recovery": "retry once, then report the error with free-space hint",
+  "cautions": [
+    "backups contain private data: keep them on local disk only",
+    "never upload, email, or sync backup files anywhere",
+    "never include secrets verbatim in progress output"
+  ]
+}

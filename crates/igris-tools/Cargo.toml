@@ -1,0 +1,16 @@
+[package]
+name = "igris-tools"
+version = "0.1.0"
+edition = "2021"
+license = "Proprietary"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+igris-policy = { path = "../igris-policy" }
+
+[dev-dependencies]
+igris-sandbox = { path = "../igris-sandbox" }
+chrono = { workspace = true }

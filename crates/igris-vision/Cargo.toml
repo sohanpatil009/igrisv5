@@ -1,0 +1,10 @@
+[package]
+name = "igris-vision"
+version = "0.1.0"
+edition = "2021"
+license = "Proprietary"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }

@@ -1,0 +1,21 @@
+{
+  "name": "restart-service",
+  "description": "Restart a named local service. APPROVAL REQUIRED before restart.",
+  "version": "0.1.0",
+  "inputs": ["service"],
+  "preconditions": ["terminal tool enabled", "service is a known local service", "explicit user approval obtained"],
+  "permissions": ["L3"],
+  "tools": ["terminal"],
+  "steps": [
+    "STOP: confirm the exact service name with the user",
+    "check dependents that would be interrupted and warn",
+    "restart only after approval, then verify it came back healthy"
+  ],
+  "validation": "service reports healthy after restart",
+  "failure_recovery": "report startup logs tail and suggest the manual command",
+  "cautions": [
+    "APPROVAL REQUIRED: never restart without explicit confirmation",
+    "named services only: never restart by pattern, pid, or wildcard",
+    "never restart remote, production, or unknown services"
+  ]
+}

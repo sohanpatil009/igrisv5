@@ -1,0 +1,20 @@
+{
+  "name": "web-research",
+  "description": "Research a topic on the web and return sourced findings with comparison.",
+  "version": "0.1.0",
+  "inputs": ["question"],
+  "preconditions": ["network available", "browser tool enabled"],
+  "permissions": ["L0", "L1"],
+  "tools": ["browser"],
+  "steps": [
+    "fetch 3+ primary sources for the question",
+    "compare claims across sources, note disagreements",
+    "summarize with source links and confidence per claim"
+  ],
+  "validation": "every claim cites a source link",
+  "failure_recovery": "report which sources failed and summarize the rest",
+  "cautions": [
+    "read-only browsing: never submit forms or log in anywhere",
+    "never download or execute files from the web"
+  ]
+}

@@ -1,0 +1,19 @@
+[package]
+name = "igris-cli"
+version = "0.1.0"
+edition = "2021"
+license = "Proprietary"
+
+[[bin]]
+name = "igris-cli"
+path = "src/main.rs"
+
+[dependencies]
+serde_json = { workspace = true }
+chrono = { workspace = true }
+igris-events = { path = "../../crates/igris-events" }
+igris-memory = { path = "../../crates/igris-memory" }
+igris-orchestrator = { path = "../../crates/igris-orchestrator" }
+igris-policy = { path = "../../crates/igris-policy" }
+igris-telemetry = { path = "../../crates/igris-telemetry" }
+igris-reflex = { path = "../../crates/igris-reflex" }

@@ -1,0 +1,28 @@
+# Rust
+/target/
+/**/target/
+# NOTE: Cargo.lock IS committed (binary workspace = reproducible builds)
+
+# Env / secrets — never commit keys
+.env
+*.pem
+*.key
+*.p12
+*.pfx
+*.onnx
+
+# Runtime data (exe-relative pkg/ is created at runtime)
+pkg/
+data/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Dioxus / Node (FIELD is Dioxus native; no web bundle committed)
+dist/
+bundle/
+node_modules/

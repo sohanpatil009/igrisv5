@@ -1,0 +1,21 @@
+{
+  "name": "code-review",
+  "description": "Review uncommitted changes and report risks before anything is committed.",
+  "version": "0.1.0",
+  "inputs": ["repository_path"],
+  "preconditions": ["terminal tool enabled", "git repository present"],
+  "permissions": ["L1"],
+  "tools": ["terminal", "filesystem"],
+  "steps": [
+    "read the diff (never commit, never push)",
+    "flag security risks: secrets, unsafe blocks, permission changes",
+    "summarize: safe to commit, needs work, or blocked with reasons"
+  ],
+  "validation": "verdict is one of safe/needs-work/blocked with file references",
+  "failure_recovery": "review file-by-file and mark unreadable files explicitly",
+  "cautions": [
+    "read-only review: never commit, push, stash, or reset anything",
+    "never print full secret values; reference variable names only",
+    "never approve your own high-risk changes silently"
+  ]
+}

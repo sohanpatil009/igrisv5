@@ -1,0 +1,11 @@
+[package]
+name = "igris-gateway"
+version = "0.1.0"
+edition = "2021"
+license = "Proprietary"
+
+[dependencies]
+tokio = { workspace = true }
+serde = { workspace = true }
+igris-events = { path = "../igris-events" }
+igris-runtime = { path = "../igris-runtime" }

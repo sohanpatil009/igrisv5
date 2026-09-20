@@ -1,0 +1,23 @@
+{
+  "name": "deploy-service",
+  "description": "Deploy a service with a rollback plan. APPROVAL REQUIRED before any deploy step.",
+  "version": "0.1.0",
+  "inputs": ["service", "environment"],
+  "preconditions": ["docker and terminal tools enabled", "rollback plan exists", "explicit user approval obtained"],
+  "permissions": ["L3", "L4"],
+  "tools": ["terminal", "docker"],
+  "steps": [
+    "STOP: present the deploy plan plus rollback plan and get explicit approval",
+    "verify preconditions (image built, health checks defined) — abort if any fail",
+    "deploy to the named environment only, then verify health",
+    "on any health failure, roll back immediately and report"
+  ],
+  "validation": "deployment receipt plus post-deploy health status recorded",
+  "failure_recovery": "automatic rollback on health failure; manual rollback command provided otherwise",
+  "cautions": [
+    "APPROVAL REQUIRED: never deploy without explicit user approval",
+    "named environment only: never production unless production was named",
+    "never deploy with failing tests or missing rollback plan",
+    "never print registry credentials or deploy tokens"
+  ]
+}

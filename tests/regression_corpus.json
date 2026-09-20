@@ -1,0 +1,18 @@
+{
+  "_note": "IGRIS v5 reflex regression corpus. Each case pins input -> expected decision. The guard test in crates/igris-reflex/tests/regression.rs runs every case on every build.",
+  "cases": [
+    {"input": "Send the latest build to my laptop", "intent": "DeviceTransfer", "requires_reasoning": false, "approval": false},
+    {"input": "push these photos to my phone", "intent": "DeviceTransfer", "requires_reasoning": false, "approval": false},
+    {"input": "share the doc with the server", "intent": "DeviceTransfer", "requires_reasoning": false, "approval": false},
+    {"input": "battery?", "intent": "DeviceStatus", "requires_reasoning": false, "approval": false},
+    {"input": "how much disk space is left", "intent": "DeviceStatus", "requires_reasoning": false, "approval": false},
+    {"input": "what did we decide about the router", "intent": "MemoryQuery", "requires_reasoning": false, "approval": false},
+    {"input": "recall my preference for briefs", "intent": "MemoryQuery", "requires_reasoning": false, "approval": false},
+    {"input": "draft a reminder for tomorrow", "intent": "Communication", "requires_reasoning": true, "approval": false},
+    {"input": "run the test suite", "intent": "ToolExec", "requires_reasoning": true, "approval": false},
+    {"input": "delete everything", "intent": "RiskyOp", "requires_reasoning": true, "approval": true},
+    {"input": "format the drive", "intent": "RiskyOp", "requires_reasoning": true, "approval": true},
+    {"input": "send email to the team about the release", "intent": "RiskyOp", "requires_reasoning": true, "approval": true},
+    {"input": "florp wobble zephyr quantum banana", "intent": "General", "requires_reasoning": true, "approval": false}
+  ]
+}

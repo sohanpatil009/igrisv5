@@ -1,0 +1,35 @@
+[workspace]
+members = [
+    "crates/igris-events",
+    "crates/igris-runtime",
+    "crates/igris-memory",
+    "crates/igris-context",
+    "crates/igris-reflex",
+    "crates/igris-router",
+    "crates/igris-orchestrator",
+    "crates/igris-gateway",
+    "crates/igris-telemetry",
+    "crates/igris-policy",
+    "crates/igris-device",
+    "crates/igris-tools",
+    "crates/igris-agents",
+    "crates/igris-skills",
+    "crates/igris-sandbox",
+    "crates/igris-voice",
+    "crates/igris-vision",
+    "apps/field-dioxus",
+    "apps/cli",
+]
+resolver = "2"
+
+[workspace.dependencies]
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+thiserror = "2.0"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.6", features = ["v4", "serde"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+futures = "0.3"

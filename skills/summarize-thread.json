@@ -1,0 +1,17 @@
+{
+  "name": "summarize-thread",
+  "description": "Condense a conversation, document, or thread into key points and decisions.",
+  "version": "0.1.0",
+  "inputs": ["text_or_topic"],
+  "preconditions": ["memory store reachable"],
+  "permissions": ["L0", "L1"],
+  "tools": ["memory_search"],
+  "steps": [
+    "prefetch relevant memories for the topic",
+    "extract decisions, action items, and open questions",
+    "present a 5-bullet summary plus one-line verdict"
+  ],
+  "validation": "summary covers decisions and open questions",
+  "failure_recovery": "return raw chronological notes instead",
+  "cautions": ["read-only skill: never modifies or deletes memories"]
+}

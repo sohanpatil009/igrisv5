@@ -1,0 +1,20 @@
+{
+  "name": "set-reminder",
+  "description": "Draft a reminder for the user. Drafts only — sending needs approval.",
+  "version": "0.1.0",
+  "inputs": ["what", "when"],
+  "preconditions": ["messaging tool enabled"],
+  "permissions": ["L1"],
+  "tools": ["messaging"],
+  "steps": [
+    "parse the what and when into a concrete reminder",
+    "draft it and show it to the user for confirmation",
+    "only schedule after explicit user approval"
+  ],
+  "validation": "reminder shows text, time, and approval state",
+  "failure_recovery": "keep the draft and ask for a simpler time expression",
+  "cautions": [
+    "drafts only: never schedule or send without explicit approval",
+    "never set reminders that trigger irreversible actions"
+  ]
+}

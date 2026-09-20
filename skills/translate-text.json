@@ -1,0 +1,20 @@
+{
+  "name": "translate-text",
+  "description": "Translate user-provided text into a target language, preserving tone.",
+  "version": "0.1.0",
+  "inputs": ["text", "target_language"],
+  "preconditions": ["model route available"],
+  "permissions": ["L0", "L1"],
+  "tools": ["memory_search"],
+  "steps": [
+    "detect the source language of the input",
+    "route via privacy policy: secret content stays on local models",
+    "return the translation plus any untranslatable terms flagged"
+  ],
+  "validation": "output language matches the requested target",
+  "failure_recovery": "return a literal gloss with uncertain parts marked",
+  "cautions": [
+    "never send secret-scope text to cloud models for translation",
+    "read-only: never writes translations into files unless asked"
+  ]
+}

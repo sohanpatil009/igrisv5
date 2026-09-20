@@ -1,0 +1,20 @@
+{
+  "name": "lockdown-check",
+  "description": "Security self-check: list approval-gated skills, open sessions, and risky configs.",
+  "version": "0.1.0",
+  "inputs": [],
+  "preconditions": ["skill registry and gateway reachable"],
+  "permissions": ["L1"],
+  "tools": ["memory_search"],
+  "steps": [
+    "list enabled skills at L3+ with their cautions",
+    "list active gateway sessions and background jobs",
+    "report anomalies: unknown sessions, over-permissioned skills, missing approvals"
+  ],
+  "validation": "report covers skills, sessions, and a clean-or-flagged verdict",
+  "failure_recovery": "report partial data with the unreachable part named",
+  "cautions": [
+    "audit only: this skill changes nothing",
+    "never reveal approval payloads or secret material in the report"
+  ]
+}

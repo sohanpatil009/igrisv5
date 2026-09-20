@@ -1,0 +1,20 @@
+{
+  "name": "open-application",
+  "description": "Launch a user-named desktop application.",
+  "version": "0.1.0",
+  "inputs": ["app_name"],
+  "preconditions": ["terminal tool enabled", "app name allowlisted by user policy"],
+  "permissions": ["L2"],
+  "tools": ["terminal"],
+  "steps": [
+    "resolve the app name against the allowlist (no fuzzy system binaries)",
+    "launch it detached with no elevated privileges",
+    "confirm launch or report the exact failure"
+  ],
+  "validation": "process started without elevation, or a clear error",
+  "failure_recovery": "suggest the closest allowlisted app name",
+  "cautions": [
+    "allowlisted apps only: never launch shells, interpreters, or admin tools",
+    "never elevate privileges; never pass user files as arguments unseen"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "name": "run-tests",
+  "description": "Run a project's test suite and report failures with the safest fix first.",
+  "version": "0.1.0",
+  "inputs": ["project_path"],
+  "preconditions": ["terminal tool enabled", "project path inside the workspace"],
+  "permissions": ["L2"],
+  "tools": ["terminal"],
+  "steps": [
+    "confirm the project path is inside the allowed workspace",
+    "run the project's canonical test command with a timeout",
+    "report pass/fail per suite and point at first failure"
+  ],
+  "validation": "output includes command run, duration, and pass/fail counts",
+  "failure_recovery": "on timeout, report the hanging suite and stop",
+  "cautions": [
+    "workspace paths only: never run tests outside the project root",
+    "never use --fix, --write, or update flags that modify sources",
+    "bounded runtime: kill the runaway process on timeout"
+  ]
+}

@@ -1,0 +1,25 @@
+[package]
+name = "igris-field"
+version = "0.1.0"
+edition = "2021"
+license = "Proprietary"
+
+[[bin]]
+name = "igris-field"
+path = "src/main.rs"
+
+[dependencies]
+dioxus = { version = "0.7", features = ["desktop", "signals", "hooks", "html", "macro", "launch"] }
+dioxus-core = "0.7"
+dioxus-signals = "0.7"
+serde = { workspace = true }
+tokio = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+igris-events = { path = "../../crates/igris-events" }
+igris-memory = { path = "../../crates/igris-memory" }
+igris-orchestrator = { path = "../../crates/igris-orchestrator" }
+igris-policy = { path = "../../crates/igris-policy" }
+igris-telemetry = { path = "../../crates/igris-telemetry" }
+igris-reflex = { path = "../../crates/igris-reflex" }
+igris-device = { path = "../../crates/igris-device" }

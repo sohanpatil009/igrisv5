@@ -1,0 +1,58 @@
+# cargo-deny policy — IGRIS v5 supply chain (Phase 12)
+# Run: cargo deny check (advisories + bans + licenses + sources)
+
+[graph]
+targets = [
+    { triple = "x86_64-pc-windows-msvc" },
+    { triple = "x86_64-unknown-linux-gnu" },
+]
+
+[advisories]
+db-path = "~/.cargo/advisory-dbs"
+db-urls = ["https://github.com/RustSec/advisory-db"]
+yanked = "warn"
+unmaintained = "warn"
+unsound = "warn"
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+# GPL/AGPL/LGPL-3 are incompatible with the proprietary IGRIS license.
+deny = [
+    { name = "GPL-2.0", confidence-threshold = 0.8 },
+    { name = "GPL-3.0", confidence-threshold = 0.8 },
+    { name = "AGPL-3.0", confidence-threshold = 0.8 },
+    { name = "LGPL-3.0", confidence-threshold = 0.8 },
+]
+skip = []
+skip-tree = []
+
+[licenses]
+unlicensed = "deny"
+# Commercially safe set, plus our own first-party license.
+# r-efi (UEFI helper, transitive) is MIT/Apache/LGPL-2.1 triple-licensed:
+# consumed under the MIT/Apache-2.0 option only.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unlicense",
+    "CC0-1.0",
+    "MPL-2.0",
+    "Unicode-DFS-2016",
+    "Unicode-3.0",
+    "OpenSSL",
+    "Zlib",
+    "BSL-1.0",
+    "NCSA",
+    "Proprietary",
+]
+confidence-threshold = 0.8
+exceptions = []
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

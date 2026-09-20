@@ -1,0 +1,12 @@
+[package]
+name = "igris-runtime"
+version = "0.1.0"
+edition = "2021"
+license = "Proprietary"
+
+[dependencies]
+tokio = { workspace = true }
+serde = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+igris-events = { path = "../igris-events" }

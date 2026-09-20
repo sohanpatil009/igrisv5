@@ -1,0 +1,12 @@
+[package]
+name = "igris-agents"
+version = "0.1.0"
+edition = "2021"
+license = "Proprietary"
+
+[dependencies]
+serde = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }
+igris-tools = { path = "../igris-tools" }
+igris-memory = { path = "../igris-memory" }

@@ -1,0 +1,20 @@
+{
+  "name": "network-diagnostics",
+  "description": "Check connectivity: DNS, gateway reachability, and latency.",
+  "version": "0.1.0",
+  "inputs": [],
+  "preconditions": ["terminal tool enabled"],
+  "permissions": ["L1"],
+  "tools": ["terminal"],
+  "steps": [
+    "resolve DNS for a well-known host",
+    "measure latency to gateway and internet host",
+    "report a verdict: local issue, DNS issue, or upstream issue"
+  ],
+  "validation": "verdict names exactly one of local/dns/upstream",
+  "failure_recovery": "report which probe failed and suggest the manual command",
+  "cautions": [
+    "diagnostic probes only: ping and DNS lookups, no port scans",
+    "never probe hosts the user did not name or imply"
+  ]
+}

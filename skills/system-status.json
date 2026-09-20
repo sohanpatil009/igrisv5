@@ -1,0 +1,20 @@
+{
+  "name": "system-status",
+  "description": "Report CPU, memory, disk, battery, and network health like JARVIS on boot.",
+  "version": "0.1.0",
+  "inputs": [],
+  "preconditions": ["terminal tool enabled"],
+  "permissions": ["L0"],
+  "tools": ["terminal"],
+  "steps": [
+    "query CPU load, RAM usage, and disk space (read-only commands)",
+    "query battery level and network reachability",
+    "present a one-screen health brief, flag anything critical"
+  ],
+  "validation": "brief covers cpu, ram, disk, battery, network",
+  "failure_recovery": "report per-metric errors inline and continue",
+  "cautions": [
+    "read-only commands only: status queries, never configuration changes",
+    "never expose raw credentials or tokens found in environment output"
+  ]
+}

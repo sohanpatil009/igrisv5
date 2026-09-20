@@ -1,0 +1,11 @@
+[package]
+name = "igris-voice"
+version = "0.1.0"
+edition = "2021"
+license = "Proprietary"
+
+[dependencies]
+serde = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+igris-reflex = { path = "../igris-reflex" }

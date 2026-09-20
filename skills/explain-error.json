@@ -1,0 +1,20 @@
+{
+  "name": "explain-error",
+  "description": "Diagnose an error message or stack trace and propose the safest fix first.",
+  "version": "0.1.0",
+  "inputs": ["error_text"],
+  "preconditions": ["model route available"],
+  "permissions": ["L0", "L1"],
+  "tools": ["memory_search", "browser"],
+  "steps": [
+    "classify the error (build, runtime, network, permission)",
+    "recall past fixes from memory and check known issues",
+    "propose fixes ordered safest-first with the risky ones flagged"
+  ],
+  "validation": "at least one fix includes a verification command",
+  "failure_recovery": "state what is unknown and what extra log line would help",
+  "cautions": [
+    "diagnosis only: never apply fixes automatically",
+    "never suggest disabling security (firewalls, permissions) as a fix"
+  ]
+}

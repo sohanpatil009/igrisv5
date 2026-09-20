@@ -1,0 +1,17 @@
+{
+  "name": "morning-brief",
+  "description": "Collect yesterday's notes and draft a standup brief.",
+  "version": "0.1.0",
+  "inputs": ["date"],
+  "preconditions": ["memory store reachable"],
+  "permissions": ["L0", "L1"],
+  "tools": ["memory_search"],
+  "steps": [
+    "prefetch yesterday's episodic memories",
+    "compile a 3-section brief: done, doing, blocked",
+    "present for approval (no auto-send)"
+  ],
+  "validation": "brief contains done/doing/blocked sections",
+  "failure_recovery": "fall back to raw memory list",
+  "cautions": ["read-only: never messages anyone or schedules anything"]
+}

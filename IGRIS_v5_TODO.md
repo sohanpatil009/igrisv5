@@ -151,11 +151,12 @@
 * [x] Barge-in: fresh speech over live synthesis cancels it (`SpeakingCancelled`); explicit `interrupt()` safe when idle
 * [x] `capture` (10b): cpal `list_mics()` (headless-safe) + `record_blocking()` (mono f32, F32/I16/U16, honest NoDevice); live mic detected on dev machine
 * [x] `tts` (10b): `PiperTts` (process CLI shape, spawn + kill-cancel, utterance log) + `auto_detect()` backend status; proven with echo stand-in
+* [x] Models provisioned (2026-09-20, `models/`, git-ignored, `MODELS.md` manifest): Piper engine + Lessac voice LIVE (3s audio in 0.2s); SenseVoice-int8 + MiniLM ONNX on disk with seams ready (`SpeechToText`, `EmbeddingProvider`); `PiperTts::bundled()` resolver
 * [x] `igris-cli voice-status`: live mic/TTS/wake report (runs headless)
 * [x] `igris-vision`: `VisionGate::should_invoke()` (pixels + reason required — text stays text), `ImageDescriber` seam + honest `NullDescriber`, serializable `VisionRequest`
 * [x] Tests: 17 voice + 3 vision — all green
 * [x] Workspace: 176 tests green, clippy `--all-targets -D warnings` clean, fmt applied
-* [ ] Queued: neural STT (sherpa-onnx, needs model downloads), OS-native TTS (SAPI/WinRT), acoustic wake model
+* [ ] Queued: neural STT wiring (`sherpa-onnx` adapter — model already on disk), OS-native TTS (SAPI/WinRT), acoustic wake model, local reasoning LLM (no runner integrated — decide before downloading GBs)
 
 ## Phase 11 — FIELD UX (11a + 11b DONE 2026-09-20)
 

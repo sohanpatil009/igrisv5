@@ -40,6 +40,21 @@ impl PiperTts {
     pub fn binary_present(&self) -> bool {
         self.exe.exists() || which_like(&self.exe)
     }
+
+    /// Resolve the provisioned Piper install (`models/piper/...`) relative
+    /// to the current working directory. Returns `None` when unprovisioned —
+    /// callers fall back or report, never fabricate a voice.
+    pub fn bundled() -> Option<Self> {
+        let exe = PathBuf::from("models/piper/bin/piper/piper.exe");
+        let voice = PathBuf::from("models/piper/voices/en_US-lessac-medium.onnx");
+        if !exe.exists() || !voice.exists() {
+            return None;
+        }
+        Some(Self::new(
+            exe,
+            vec!["--model".into(), voice.to_string_lossy().to_string()],
+        ))
+    }
 }
 
 /// True when the path names something executable on PATH (cmd, echo, ...).
@@ -155,5 +170,14 @@ mod tests {
         assert!(!s.tts_binary_present);
         assert_eq!(s.wake_phrase, "arise");
         assert_eq!(s.mic_count, s.mic_names.len());
+    }
+
+    #[test]
+    fn bundled_resolves_when_provisioned() {
+        // Only meaningful on a provisioned checkout (models/ is git-ignored);
+        // elsewhere it must return None, never panic.
+        if let Some(t) = PiperTts::bundled() {
+            assert!(t.binary_present());
+        }
     }
 }

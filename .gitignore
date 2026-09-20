@@ -15,6 +15,12 @@
 pkg/
 data/
 *.log
+*.wav
+
+# Local models (large binaries, re-downloadable; see models/MODELS.md)
+models/*
+!models/MODELS.md
+!models/README.md
 
 # OS / editor
 .DS_Store

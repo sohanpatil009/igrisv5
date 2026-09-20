@@ -20,12 +20,12 @@ Orchestration → Policy → Execution → Verification → Learning.
 * `igris-skills`: validated JSON manifests + registry with enable/disable, use/success tracking, promotion candidates. Example in `skills/`.
 * `igris-policy`: autonomy gates + TTL approvals + hash-chained audit + shared kill-switch (denies all, beats approvals).
 * `igris-sandbox`: workspace confinement (roots/commands/network/env/caps) + secret vault with redaction. OS isolation deferred to hardening; boundary contract established.
-* `igris-device`: identity/TOFU/OTP trust, HMAC envelopes, token-gated transfer sessions with checksum resume, concurrent subnet discovery, axum service (info/prepare/confirm/deny/upload/complete). TLS proxy + sync engine queued as 9b.
+* `igris-device`: identity/TOFU/OTP trust, HMAC envelopes, token-gated transfer sessions with checksum resume, concurrent subnet discovery, axum service (info/handshake/uploads/SSE), ring-only TLS proxy with pin gate, atomic identity/trust store, LWW sync engine.
 * `igris-tools`: validate-then-run runtime — root-confined filesystem, denylisted terminal (High risk), browser URL gate (transport Phase 9); async timeouts on the blocking pool; lazy `Catalog` + capability filtering. MCP JSON-RPC transport deferred to Phase 9.
-* `igris-voice`: real VAD + fuzzy Arise matcher + trait-seamed STT/TTS + barge-in pipeline over reflex (no LLM on fast path). Neural models + mic capture queued as 10b.
+* `igris-voice`: real VAD + fuzzy Arise matcher + trait-seamed STT/TTS + barge-in pipeline over reflex (no LLM on fast path). cpal capture + process TTS + auto-detect live. Neural STT / OS-native TTS / acoustic wake queued.
 * `igris-vision`: invoke gate (pixels + reason) + describer seam. Multimodal on a budget.
-* `apps/field-dioxus`: ops-desk shell on `FieldBackend` (live cores, pausable tick, empty states). SSE stream queued as 11b.
-* `apps/cli`: headless debug commands over the same cores.
+* `apps/field-dioxus`: ops-desk shell on `FieldBackend` (live cores, pausable tick, empty states). Timeline streams the event bus live; LAN scan runs on throwaway scanners; memory write + 2s PTT capture wired. Titled "IGRIS FIELD".
+* `apps/cli`: headless debug commands over the same cores (`decide/memory-put/memory-find/mission-demo/approve-demo/timeline-demo/voice-status`).
 
 ## Dependency rules
 

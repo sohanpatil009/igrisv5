@@ -1,6 +1,6 @@
-//! HTTP service: device info, pairing-adjacent transfer handshake, uploads.
-//! Plain HTTP in Phase 9a (LAN scope); the TLS proxy + cert pinning ride
-//! on top in 9b without changing these routes.
+//! HTTP service: device info, pairing-adjacent transfer handshake, uploads,
+//! and a progress event stream. Plain HTTP behind the 9b TLS proxy on LAN;
+//! the same router serves both.
 
 use crate::transfer::{FileSpec, SessionManager};
 use crate::DeviceInfo;
@@ -8,29 +8,58 @@ use axum::{
     body::Bytes,
     extract::{Path, Query, State},
     http::StatusCode,
-    response::{IntoResponse, Json},
-    routing::{get, post},
+    response::{
+        sse::{Event as SseEvent, KeepAlive, Sse},
+        IntoResponse, Json,
+    },
+    routing::get,
     Router,
 };
 use serde::{Deserialize, Serialize};
+use std::convert::Infallible;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 #[derive(Clone)]
 pub struct AppState {
     pub info: DeviceInfo,
     pub sessions: Arc<Mutex<SessionManager>>,
     pub chunk_dir: PathBuf,
+    pub progress_tx: tokio::sync::broadcast::Sender<String>,
+}
+
+impl AppState {
+    pub fn new(info: DeviceInfo, chunk_dir: PathBuf) -> Self {
+        let (progress_tx, _) = tokio::sync::broadcast::channel(64);
+        Self {
+            info,
+            sessions: Arc::new(Mutex::new(SessionManager::new())),
+            chunk_dir,
+            progress_tx,
+        }
+    }
+
+    fn emit(&self, payload: serde_json::Value) {
+        let _ = self.progress_tx.send(payload.to_string());
+    }
 }
 
 pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/api/ecosystem/v1/info", get(info))
-        .route("/api/igris/v1/share/prepare", post(prepare))
-        .route("/api/igris/v1/share/confirm", post(confirm))
-        .route("/api/igris/v1/share/deny", post(deny))
-        .route("/api/igris/v1/share/upload/:session/:file", post(upload))
-        .route("/api/igris/v1/share/complete", post(complete))
+        .route("/api/igris/v1/share/prepare", axum::routing::post(prepare))
+        .route("/api/igris/v1/share/confirm", axum::routing::post(confirm))
+        .route("/api/igris/v1/share/deny", axum::routing::post(deny))
+        .route(
+            "/api/igris/v1/share/upload/:session/:file",
+            axum::routing::post(upload),
+        )
+        .route(
+            "/api/igris/v1/share/complete",
+            axum::routing::post(complete),
+        )
+        .route("/api/igris/v1/share/events/:session", get(session_events))
         .with_state(state)
 }
 
@@ -74,18 +103,24 @@ struct SessionReq {
 
 async fn confirm(State(s): State<AppState>, Json(req): Json<SessionReq>) -> impl IntoResponse {
     match s.sessions.lock().unwrap().approve(&req.session_id) {
-        Ok(()) => (StatusCode::OK, Json(serde_json::json!({"status": "ready"}))).into_response(),
+        Ok(()) => {
+            s.emit(serde_json::json!({"session": req.session_id, "state": "Transferring"}));
+            (StatusCode::OK, Json(serde_json::json!({"status": "ready"}))).into_response()
+        }
         Err(e) => (StatusCode::CONFLICT, e.to_string()).into_response(),
     }
 }
 
 async fn deny(State(s): State<AppState>, Json(req): Json<SessionReq>) -> impl IntoResponse {
     match s.sessions.lock().unwrap().deny(&req.session_id) {
-        Ok(()) => (
-            StatusCode::OK,
-            Json(serde_json::json!({"status": "denied"})),
-        )
-            .into_response(),
+        Ok(()) => {
+            s.emit(serde_json::json!({"session": req.session_id, "state": "Denied"}));
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({"status": "denied"})),
+            )
+                .into_response()
+        }
         Err(e) => (StatusCode::CONFLICT, e.to_string()).into_response(),
     }
 }
@@ -135,6 +170,7 @@ async fn upload(
         .unwrap()
         .missing_chunks(&session, &file)
         .unwrap_or_default();
+    s.emit(serde_json::json!({"session": session, "file": file, "received": body.len(), "missing_chunks": missing.len()}));
     (
         StatusCode::OK,
         Json(serde_json::json!({"received": body.len(), "missing_chunks": missing})),
@@ -163,13 +199,49 @@ async fn complete(State(s): State<AppState>, Json(req): Json<CompleteReq>) -> im
         .unwrap()
         .complete(&req.session_id, &req.file, &bytes)
     {
-        Ok(()) => (
-            StatusCode::OK,
-            Json(serde_json::json!({"status": "completed"})),
-        )
-            .into_response(),
-        Err(e) => (StatusCode::CONFLICT, e.to_string()).into_response(),
+        Ok(()) => {
+            s.emit(serde_json::json!({"session": req.session_id, "file": req.file, "state": "Completed"}));
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({"status": "completed"})),
+            )
+                .into_response()
+        }
+        Err(e) => {
+            s.emit(
+                serde_json::json!({"session": req.session_id, "file": req.file, "state": "Failed"}),
+            );
+            (StatusCode::CONFLICT, e.to_string()).into_response()
+        }
     }
+}
+
+/// Progress stream for one session: chunk/state events as SSE.
+/// Lagged receivers drop to the latest event rather than stalling the sender.
+async fn session_events(
+    State(s): State<AppState>,
+    Path(session): Path<String>,
+) -> Sse<impl tokio_stream::Stream<Item = Result<SseEvent, Infallible>>> {
+    use tokio_stream::{wrappers::BroadcastStream, StreamExt};
+    let rx = s.progress_tx.subscribe();
+    let stream = BroadcastStream::new(rx).filter_map(move |msg| {
+        let want = session.clone();
+        match msg {
+            Ok(text) => {
+                if text.contains(&want) {
+                    Some(Ok(SseEvent::default().data(text)))
+                } else {
+                    None
+                }
+            }
+            Err(_) => None, // lagged: skip, keep streaming
+        }
+    });
+    Sse::new(stream).keep_alive(
+        KeepAlive::new()
+            .interval(Duration::from_secs(15))
+            .text("ping"),
+    )
 }
 
 #[cfg(test)]
@@ -194,11 +266,10 @@ mod tests {
             },
             trusted: true,
         };
-        let state = AppState {
+        let state = AppState::new(
             info,
-            sessions: Arc::new(Mutex::new(SessionManager::new())),
-            chunk_dir: std::env::temp_dir().join(format!("igris-srv-{}", std::process::id())),
-        };
+            std::env::temp_dir().join(format!("igris-srv-{}", std::process::id())),
+        );
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let port = listener.local_addr().unwrap().port();
         let app = router(state.clone());
@@ -346,5 +417,56 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(up.status(), StatusCode::CONFLICT);
+    }
+
+    #[tokio::test]
+    async fn progress_stream_reports_session_events() {
+        use tokio_stream::StreamExt;
+        let (base, _) = test_server().await;
+        let client = reqwest::Client::new();
+        let prep: serde_json::Value = client
+            .post(format!("{base}/api/igris/v1/share/prepare"))
+            .json(&serde_json::json!({"from_device": "laptop", "files": [{"name": "s.bin", "size": 4, "checksum": null}]}))
+            .send()
+            .await
+            .unwrap()
+            .json()
+            .await
+            .unwrap();
+        let session = prep["session_id"].as_str().unwrap().to_string();
+        let token = prep["tokens"]["s.bin"].as_str().unwrap().to_string();
+
+        // Subscribe first, then drive events through the session.
+        let mut stream = client
+            .get(format!("{base}/api/igris/v1/share/events/{session}"))
+            .send()
+            .await
+            .unwrap()
+            .bytes_stream();
+        client
+            .post(format!("{base}/api/igris/v1/share/confirm"))
+            .json(&serde_json::json!({"session_id": session}))
+            .send()
+            .await
+            .unwrap();
+        client
+            .post(format!(
+                "{base}/api/igris/v1/share/upload/{session}/s.bin?token={token}"
+            ))
+            .body("data")
+            .send()
+            .await
+            .unwrap();
+        // First streamed event belongs to this session (confirm or chunk).
+        let first = tokio::time::timeout(std::time::Duration::from_secs(5), stream.next())
+            .await
+            .expect("event within 5s")
+            .expect("stream open")
+            .expect("bytes readable");
+        let text = String::from_utf8_lossy(&first);
+        assert!(
+            text.contains(&session),
+            "stream carries this session's events: {text}"
+        );
     }
 }

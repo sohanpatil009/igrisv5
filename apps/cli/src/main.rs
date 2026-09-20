@@ -18,6 +18,7 @@ igris-cli — IGRIS v5 headless debug
   mission-demo         run a 3-node mission to completion (prints progress)
   approve-demo         request -> approve -> expiry lifecycle demo
   timeline-demo        record spans and print the debug timeline
+  voice-status         list mics + TTS probe (headless-safe, never crashes)
 ";
 
 fn main() {
@@ -81,6 +82,10 @@ fn run(args: Vec<String>) -> i32 {
             for e in t.recent(5) {
                 println!("[{}] {} — {}", e.at.format("%H:%M:%S"), e.kind, e.summary);
             }
+            0
+        }
+        "voice-status" => {
+            println!("{}", voice_status_json());
             0
         }
         _ => {
@@ -151,6 +156,17 @@ fn approve_demo() -> String {
     serde_json::json!({"approved": approved, "pending_after": still_pending}).to_string()
 }
 
+fn voice_status_json() -> String {
+    let s = igris_voice::auto_detect(None);
+    serde_json::json!({
+        "mic_count": s.mic_count,
+        "mic_names": s.mic_names,
+        "tts_binary_present": s.tts_binary_present,
+        "wake_phrase": s.wake_phrase,
+    })
+    .to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -173,6 +189,13 @@ mod tests {
     fn approve_demo_flow() {
         let out = approve_demo();
         assert!(out.contains("\"approved\":true"));
+    }
+
+    #[test]
+    fn voice_status_reports() {
+        let out = voice_status_json();
+        assert!(out.contains("\"wake_phrase\":\"arise\""));
+        assert!(out.contains("\"mic_count\""));
     }
 
     #[test]

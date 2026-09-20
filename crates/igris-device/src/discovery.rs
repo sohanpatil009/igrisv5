@@ -182,6 +182,14 @@ impl Discovery {
         self.devices.insert(device.id.clone(), device);
     }
 
+    /// Bulk merge (e.g. a throwaway sweep's results). Returns live count.
+    pub fn merge_many(&mut self, fresh: Vec<DiscoveredDevice>) -> usize {
+        for d in fresh {
+            self.devices.insert(d.id.clone(), d);
+        }
+        self.prune().len()
+    }
+
     /// Drop entries silent longer than the device timeout. Returns survivors.
     pub fn prune(&mut self) -> Vec<DiscoveredDevice> {
         let cutoff = Duration::from_secs(DEVICE_TIMEOUT_SECS);
@@ -237,5 +245,34 @@ mod tests {
         let kept = d.prune();
         assert_eq!(kept.len(), 1);
         assert_eq!(kept[0].id, "new");
+    }
+
+    #[test]
+    fn merge_many_bulk_loads() {
+        let mut d = Discovery {
+            config: DiscoveryConfig::default(),
+            client: reqwest::Client::new(),
+            devices: HashMap::new(),
+        };
+        let fresh = vec![
+            DiscoveredDevice {
+                id: "a".into(),
+                name: "a".into(),
+                platform: "x".into(),
+                ip: "1.1.1.1".into(),
+                port: 1,
+                last_seen: Instant::now(),
+            },
+            DiscoveredDevice {
+                id: "b".into(),
+                name: "b".into(),
+                platform: "x".into(),
+                ip: "1.1.1.2".into(),
+                port: 1,
+                last_seen: Instant::now(),
+            },
+        ];
+        assert_eq!(d.merge_many(fresh), 2);
+        assert_eq!(d.known().len(), 2);
     }
 }

@@ -3,7 +3,7 @@
 //! 1s tick (pausable); live event subscription arrives as an SSE stream.
 
 use chrono::TimeDelta;
-use igris_device::discovery::{Discovery, DiscoveryConfig};
+use igris_device::discovery::{DiscoveredDevice, Discovery, DiscoveryConfig};
 use igris_events::{Event, EventBus};
 use igris_memory::{MemoryRecord, MemoryStore, MemoryType};
 use igris_orchestrator::{Mission, TaskNode};
@@ -296,6 +296,125 @@ impl FieldBackend {
             .map(|ip| ip.to_string())
             .collect()
     }
+
+    /// Bulk-merge sweep results (throwaway scanners merge here).
+    pub fn merge_devices(&self, fresh: Vec<DiscoveredDevice>) -> Vec<DeviceView> {
+        let mut d = self.discovery.lock().unwrap();
+        d.merge_many(fresh);
+        drop(d);
+        self.known_devices()
+    }
+
+    /// Full LAN sweep on a throwaway scanner — no shared lock held across
+    /// the network I/O. Returns the merged live device list.
+    pub async fn run_lan_scan(&self) -> Vec<DeviceView> {
+        let found = match Discovery::new(DiscoveryConfig::default()) {
+            Ok(mut tmp) => tmp.scan().await,
+            Err(e) => {
+                self.telemetry.record(
+                    "discovery",
+                    &format!("scan client failed: {e}"),
+                    None,
+                    Some(false),
+                );
+                vec![]
+            }
+        };
+        self.merge_devices(found)
+    }
+
+    // -- memory write ------------------------------------------------------
+
+    pub fn memory_put(&self, content: &str) -> Option<String> {
+        let text = content.trim();
+        if text.is_empty() {
+            return None;
+        }
+        let mut r = MemoryRecord::new(MemoryType::Episodic, text, "field-ui", "local");
+        r.importance = 0.6;
+        let id = self.memory.store(r).ok()?;
+        self.telemetry
+            .record("memory", "stored note from FIELD", None, Some(true));
+        self.events.emit(Event::MemoryUpdated {
+            kind: "episodic".into(),
+        });
+        Some(id.to_string())
+    }
+
+    // -- voice -------------------------------------------------------------
+
+    /// Record `millis` ms from the default mic and judge speech content.
+    /// Blocking — callers run it on a worker thread. Transcription itself
+    /// needs the 10b neural model; this reports capture truthfully.
+    pub fn record_ptt_blocking(&self, millis: u64) -> PttResult {
+        use igris_voice::{capture::kennedy::record_blocking, Vad, VadConfig};
+        match record_blocking(millis, 0) {
+            Err(e) => PttResult {
+                captured_ms: 0,
+                samples: 0,
+                speech: false,
+                note: format!("no mic: {e}"),
+            },
+            Ok(s) => {
+                let vad = Vad::new(VadConfig::default());
+                let frame = igris_voice::AudioFrame {
+                    samples: s.data.clone(),
+                    sample_rate: s.sample_rate,
+                };
+                let speech = vad.is_speech_frame(&frame);
+                PttResult {
+                    captured_ms: millis,
+                    samples: s.data.len(),
+                    speech,
+                    note: if speech {
+                        "speech detected — transcription needs the 10b neural model".into()
+                    } else {
+                        "silence — nothing to transcribe".into()
+                    },
+                }
+            }
+        }
+    }
+}
+
+/// Human one-liners for live bus events (timeline stream).
+pub fn summarize_event(event: &igris_events::Event) -> String {
+    use igris_events::Event::*;
+    match event {
+        UserInput { text } => format!("you: {text}"),
+        VoiceDetected { transcript } => format!("heard: {transcript}"),
+        DeviceOnline { device_id } => format!("device online: {device_id}"),
+        DeviceOffline { device_id } => format!("device offline: {device_id}"),
+        TaskStarted { task_id } => format!("started {task_id}"),
+        TaskProgress { task_id, pct } => format!("{task_id} {pct}%"),
+        TaskCompleted { task_id } => format!("done {task_id}"),
+        TaskFailed { task_id, reason } => format!("{task_id} failed: {reason}"),
+        ApprovalRequired { summary, .. } => format!("approval needed: {summary}"),
+        ApprovalResolved {
+            request_id,
+            approved,
+        } => {
+            format!(
+                "approval {request_id} -> {}",
+                if *approved { "granted" } else { "denied" }
+            )
+        }
+        ToolStarted { tool } => format!("tool {tool}…"),
+        ToolCompleted { tool, ok } => format!("tool {tool} {}", if *ok { "ok" } else { "failed" }),
+        MemoryUpdated { kind } => format!("memory updated ({kind})"),
+        AgentCreated { agent } => format!("agent up: {agent}"),
+        AgentFailed { agent, reason } => format!("agent {agent} failed: {reason}"),
+        SystemWarning { msg } => format!("warning: {msg}"),
+        Heartbeat { .. } => "heartbeat".into(),
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PttResult {
+    pub captured_ms: u64,
+    pub samples: usize,
+    pub speech: bool,
+    pub note: String,
 }
 
 #[cfg(test)]
@@ -365,5 +484,59 @@ mod tests {
         assert_eq!(nodes[0].state, "Completed");
         assert!(nodes[0].checkpoint.is_some());
         assert_eq!(nodes[1].state, "Pending");
+    }
+
+    #[test]
+    fn memory_put_stores_and_rejects_empty() {
+        let b = FieldBackend::boot();
+        let before = b.memory_count();
+        assert!(b.memory_put("  ").is_none());
+        let id = b.memory_put("field note from test").expect("stored");
+        assert!(!id.is_empty());
+        assert_eq!(b.memory_count(), before + 1);
+        let hits = b.memory_search("field note from test");
+        assert!(hits.iter().any(|r| r.content == "field note from test"));
+    }
+
+    #[test]
+    fn merge_devices_joins_sweep() {
+        use std::time::Instant;
+        let b = FieldBackend::boot();
+        assert!(b.known_devices().is_empty());
+        let fresh = vec![DiscoveredDevice {
+            id: "peer-9".into(),
+            name: "peer".into(),
+            platform: "linux".into(),
+            ip: "192.168.1.20".into(),
+            port: 53327,
+            last_seen: Instant::now(),
+        }];
+        let merged = b.merge_devices(fresh);
+        assert_eq!(merged.len(), 1);
+        assert_eq!(merged[0].name, "peer");
+    }
+
+    #[test]
+    fn summarize_event_reads_clean() {
+        assert_eq!(
+            summarize_event(&igris_events::Event::TaskProgress {
+                task_id: "t".into(),
+                pct: 42
+            }),
+            "t 42%"
+        );
+        assert!(
+            summarize_event(&igris_events::Event::Heartbeat { from: "x".into() })
+                .contains("heartbeat")
+        );
+    }
+
+    #[test]
+    fn ptt_record_is_honest() {
+        let b = FieldBackend::boot();
+        let r = b.record_ptt_blocking(50);
+        assert!(!r.note.is_empty());
+        // Either hardware recorded frames or the error path said so.
+        assert!(r.samples > 0 || r.captured_ms == 0);
     }
 }

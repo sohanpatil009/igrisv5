@@ -125,21 +125,23 @@
 * [x] Tests: 7 policy + 6 sandbox + 5 chain — all green
 * [x] Workspace: 98 tests green, clippy `--all-targets -D warnings` clean, fmt applied
 
-## Phase 9 — Device Mesh (9a DONE 2026-09-20; 9b TLS proxy + syncengine queued)
+## Phase 9 — Device Mesh (9a + 9b DONE 2026-09-20)
 
 * [x] `identity`: stable id + secret, SHA-256 `fingerprint()`, per-peer `pairing_key()` (secret never on wire)
 * [x] `trust`: TOFU `verify_or_pin()` (mismatch = hard MITM error, old pin survives), revoke, JSON export/import
 * [x] `pairing`: 6-digit OTP, 120s TTL, 3-attempt burn, expiry sweep
 * [x] `message`: versioned `EcoMessage` + HMAC-SHA256 sign/verify; rejects bad sig, >5min skew, version mismatch
-* [x] `transfer`: prepare→approve/deny→token-gated chunked upload→SHA-256 `complete()`; 1MB chunk bitsets + `missing_chunks()` resume; TTL sweeps; empty offers + double-approve rejected
-* [x] `discovery`: local /24 enumeration (skip self/loopback/link-local), 32-way concurrent HTTP probes, registry merge + 120s prune
-* [x] `server` (axum): `GET info`, `POST prepare/confirm/deny`, token-gated `POST upload/:session/:file`, checksum-verifying `POST complete`; unauthenticated bytes never touch disk
-* [x] Live loop proven in tests: ephemeral server → discovery probe hits → pre-confirm upload rejected → bad token 401 → upload → checksum complete → bytes on disk match; denied sessions stay blocked
-* [x] Tests: 24 device (identity/trust/OTP/envelope/sessions/discovery/server) — all green
-* [x] Workspace: 121 tests green, clippy `--all-targets -D warnings` clean, fmt applied
-* [ ] 9b: TLS proxy (rcgen self-signed + real cert-pin gate), file persistence for trust/identity, memory/task sync (LWW), SSE progress stream
+* [x] `transfer`: prepare→approve/deny→token-gated chunked upload→SHA-256 `complete()`; 1MB chunk bitsets + `missing_chunks()` resume; TTL sweeps
+* [x] `discovery`: local /24 enumeration, 32-way concurrent HTTP probes, 120s-stale prune
+* [x] `server` (axum): `GET info`, `POST prepare/confirm/deny`, token-gated uploads, checksum `complete`, per-session SSE `events/:session` (broadcast, lag-tolerant, keep-alive)
+* [x] `tls` (9b): rcgen self-signed certs, ring-only rustls proxy (TLS→local HTTP), `fingerprint_der` pins, `require_pin` TOFU gate (MITM fails before any socket opens); pinned HTTPS loop proven live
+* [x] `store` (9b): `identity.json` + `trusted_devices.json` under exe-relative `pkg/ecosystem`, atomic writes, load-or-create identity, corrupt files reported (keyring migration tracked)
+* [x] `sync` (9b): generic LWW merge `(updated_ms, device_id)` with tombstones, deterministic tie-break, idempotent redelivery, `delta_since` exchange
+* [x] Tests: 37 device (identity/trust/OTP/envelope/sessions/discovery/TLS/persistence/sync/server/SSE) — all green
+* [x] Workspace: 164 tests green, clippy `--all-targets -D warnings` clean, fmt applied
+* [x] FIELD window titled "IGRIS FIELD" (1440×860) + software-render flags baked in
 
-## Phase 10 — Voice / Multimodal (10a DONE 2026-09-20; acoustic models queued)
+## Phase 10 — Voice / Multimodal (10a + 10b-core DONE 2026-09-20)
 
 * [x] `igris-voice`: `AudioFrame` (16kHz frames, RMS + zero-crossing metrics, synthetic tone/silence builders for tests)
 * [x] `Vad` (energy gate + ZCR band + hangover segmentation) + `VadState{Idle,Speaking}`
@@ -147,21 +149,24 @@
 * [x] `SpeechToText` / `TextToSpeech` traits + `ScriptStt` (queued transcripts) + `RecordingTts` (records + cancel)
 * [x] `VoicePipeline`: VAD → segment → STT → wake gate → reflex (never an LLM on fast path) → short ack; risky/general escalates silently
 * [x] Barge-in: fresh speech over live synthesis cancels it (`SpeakingCancelled`); explicit `interrupt()` safe when idle
+* [x] `capture` (10b): cpal `list_mics()` (headless-safe) + `record_blocking()` (mono f32, F32/I16/U16, honest NoDevice); live mic detected on dev machine
+* [x] `tts` (10b): `PiperTts` (process CLI shape, spawn + kill-cancel, utterance log) + `auto_detect()` backend status; proven with echo stand-in
+* [x] `igris-cli voice-status`: live mic/TTS/wake report (runs headless)
 * [x] `igris-vision`: `VisionGate::should_invoke()` (pixels + reason required — text stays text), `ImageDescriber` seam + honest `NullDescriber`, serializable `VisionRequest`
-* [x] Tests: 11 voice (VAD silence/tone/hangover, wake exact/fuzzy, full fast-path loop, no-wake ignore, risky escalate, barge-in, idle interrupt, STT failure) + 3 vision — all green
-* [x] Workspace: 135 tests green, clippy `--all-targets -D warnings` clean, fmt applied
-* [ ] 10b: neural STT/VAD (sherpa-onnx), Piper/SAPI TTS wiring, mic capture (cpal), acoustic wake model
+* [x] Tests: 17 voice + 3 vision — all green
+* [x] Workspace: 176 tests green, clippy `--all-targets -D warnings` clean, fmt applied
+* [ ] Queued: neural STT (sherpa-onnx, needs model downloads), OS-native TTS (SAPI/WinRT), acoustic wake model
 
-## Phase 11 — FIELD UX (11a DONE 2026-09-20; live event stream queued)
+## Phase 11 — FIELD UX (11a + 11b DONE 2026-09-20)
 
 * [x] `apps/field-dioxus` (`igris-field`, Dioxus 0.7 desktop): title bar with LIVE/KILLED presence + tick age, icon rail (7 tabs, approvals badge), center panels, status strip — dark slate + status green per `ui-ux-pro-max` ops-desk direction
 * [x] `FieldBackend` on live cores only: seeded memory (3 notes), 3-node demo mission, 1 pending approval; mission progress/stepping, memory search + telemetry, approve/deny with events, reflex summaries, autonomy switch, kill-switch engage/release, discovery + local IPs
-* [x] Panels: Overview (mission/memory/approvals/events cards), Missions (states + checkpoints + step button), Memory (live search), Approvals (approve/deny), Timeline (telemetry stream), Devices (interfaces + peers + empty states), Settings (autonomy + kill-switch)
+* [x] Panels: Overview (mission/memory/approvals/events cards), Missions (states + checkpoints + step button), Memory (live search + Remember write), Approvals (approve/deny), Timeline (live event stream), Devices (interfaces + peers + SCAN LAN), Settings (autonomy + kill-switch)
+* [x] 11b: event-driven Timeline (bus subscription + telemetry seed, newest-last, capped), throwaway-scanner LAN sweep (no shared lock across I/O), memory write path, title-bar PTT (2s capture + VAD verdict, honest about neural STT)
 * [x] Pausable 1s live tick; empty states on every thin panel; keyboard-focusable buttons
-* [x] `apps/cli` (`igris-cli`): `decide/memory-put/memory-find/mission-demo/approve-demo/timeline-demo` — proven live (`decide` → DeviceTransfer/fastswap; `mission-demo` → 100% complete)
-* [x] Tests: 6 backend + 5 CLI — all green
-* [x] Workspace: 146 tests green, clippy `--all-targets -D warnings` clean, fmt applied
-* [ ] 11b: SSE live event subscription (replace tick polling), device scan button, memory write panel, voice PTT wiring
+* [x] `apps/cli` (`igris-cli`): `decide/memory-put/memory-find/mission-demo/approve-demo/timeline-demo/voice-status` — proven live
+* [x] Tests: 10 backend + 6 CLI — all green
+* [x] Workspace: 176 tests green, clippy `--all-targets -D warnings` clean, fmt applied
 
 ## Phase 12 — Eval / Hardening (DONE 2026-09-20, conditional pass — see review)
 

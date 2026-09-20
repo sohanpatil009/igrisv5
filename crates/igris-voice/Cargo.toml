@@ -8,4 +8,5 @@ license = "Proprietary"
 serde = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
+cpal = "0.15"
 igris-reflex = { path = "../igris-reflex" }

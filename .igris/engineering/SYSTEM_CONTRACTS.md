@@ -33,8 +33,8 @@ Adaptive `ModelRouter{providers,stats,policy}`: `route_to(req,tokens) -> Routing
 Ports `53317/53318/53327/53328`. `DeviceInfo{id,name,platform,caps,trusted}` + `compute_score()` + `announcement()`.
 `Identity` (secret never transmitted) → SHA-256 fingerprint → TOFU `TrustStore` (mismatch = MITM error). OTP pairing (6-digit/120s/3-attempts).
 `EcoMessage{version,msg_type,sender,timestamp,payload,signature}` HMAC-signed; stale/version/off-key rejected.
-Transfers: prepare→approve/deny→token upload→checksum complete; 1MB chunk resume; TTL sweeps.
-HTTP routes: `GET info`, `POST prepare/confirm/deny`, `POST upload/:session/:file?token=`, `POST complete`. TLS proxy in 9b.
+Transfers: prepare→approve/deny→token upload→checksum complete; 1MB chunk resume; TTL sweeps; per-session SSE stream.
+`tls`: rcgen certs, ring-only proxy, `require_pin` gate before any traffic. `store`: atomic identity/trust JSON. `sync`: LWW + tombstones + deterministic tie-break.
 
 ## Tools/Agents
 `Tool{definition{name,description,version,permission,risk,requires_network,timeout_ms},validate,run}`. `RiskLevel` Medium+ needs approval.
@@ -51,5 +51,6 @@ A2A: `AgentCard/AgentTaskRequest/Artifact` + `validate_task()` + `verify_artifac
 `requires_approval()` = L3+. `SkillRegistry{enable/disable/record_use/record_success/promotion_candidates/approval_gated}`. Manifests live in `skills/*.json` (18-skill JARVIS pack; guard test loads all through the validator). Nothing self-installs.
 
 ## Voice / Vision
-`Vad` (energy + ZCR + hangover) → segment → `SpeechToText` → `WakeMatcher::arise()` (fuzzy≤2) → reflex fast path → short ack; escalations stay silent. Barge-in cancels live synthesis. `VoiceState{Idle,Listening,Processing,Speaking,Error}` + `VoiceEvent` stream. Neural STT/TTS/mic in 10b.
+`Vad` (energy + ZCR + hangover) → segment → `SpeechToText` → `WakeMatcher::arise()` (fuzzy≤2) → reflex fast path → short ack; escalations stay silent. Barge-in cancels live synthesis. `VoiceState{Idle,Listening,Processing,Speaking,Error}` + `VoiceEvent` stream.
+`capture`: cpal mic enum + blocking mono record (honest NoDevice). `tts`: process-based Piper shape + `auto_detect()`. Neural STT / OS-native TTS / acoustic wake queued.
 `VisionGate::should_invoke()` requires pixels + reason; `ImageDescriber` seam with honest null. Multimodal never pays the image tax by accident.

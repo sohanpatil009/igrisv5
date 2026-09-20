@@ -2,7 +2,7 @@
 //! Dark slate + status green, live-labeled metrics with tick age, pausable
 //! refresh, real buttons throughout. Empty states everywhere data can be thin.
 
-use crate::backend::FieldBackend;
+use crate::backend::{summarize_event, FieldBackend};
 use crate::state::Nav;
 use dioxus::prelude::*;
 
@@ -51,6 +51,8 @@ pub fn App(backend: FieldBackend) -> Element {
     let backend = use_context::<FieldBackend>();
     let (events, _errors) = backend.event_totals();
     let killed = backend.killed();
+    let mut ptt_busy = use_signal(|| false);
+    let mut ptt_note = use_signal(String::new);
 
     rsx! {
         div { style: format!("background:{BG};color:{TEXT};font-family:system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;"),
@@ -66,6 +68,29 @@ pub fn App(backend: FieldBackend) -> Element {
                     style: btn_style(false),
                     onclick: move |_| paused.set(!paused()),
                     if paused() { "▶ resume live" } else { "⏸ pause live" }
+                }
+                button {
+                    style: btn_style(false),
+                    onclick: move |_| {
+                        if ptt_busy() {
+                            return;
+                        }
+                        ptt_busy.set(true);
+                        ptt_note.set("listening…".into());
+                        let b = backend.clone();
+                        spawn(async move {
+                            let r = tokio::task::spawn_blocking(move || b.record_ptt_blocking(2000)).await;
+                            match r {
+                                Ok(res) => ptt_note.set(format!("{} samples · {}", res.samples, res.note)),
+                                Err(_) => ptt_note.set("capture task failed".into()),
+                            }
+                            ptt_busy.set(false);
+                        });
+                    },
+                    if ptt_busy() { "LISTENING…" } else { "TALK (2s)" }
+                }
+                if !ptt_note().is_empty() {
+                    span { style: format!("color:{MUTED};font-size:12px;"), "{ptt_note}" }
                 }
             }
             div { style: "display:flex;flex:1;min-height:0;",
@@ -188,6 +213,8 @@ fn state_color(state: &str) -> &str {
 #[component]
 fn MemoryPanel(backend: FieldBackend) -> Element {
     let mut query = use_signal(String::new);
+    let mut note = use_signal(String::new);
+    let mut saved = use_signal(String::new);
     let results = backend.memory_search(&query());
     rsx! {
         h2 { "Memory" }
@@ -205,6 +232,29 @@ fn MemoryPanel(backend: FieldBackend) -> Element {
                 p { "{r.content}" }
                 p { style: format!("color:{MUTED};font-size:12px;"), "{r.kind:?} · {r.source} · conf {r.confidence:.2}" }
             }
+        }
+        h3 { "Remember" }
+        input {
+            style: format!("background:#1D2534;color:{TEXT};border:1px solid {BORDER};border-radius:8px;padding:8px;width:60%;"),
+            placeholder: "store a note…",
+            value: "{note}",
+            oninput: move |e| note.set(e.value()),
+        }
+        button {
+            style: btn_style(true),
+            onclick: move |_| {
+                match backend.memory_put(&note()) {
+                    Some(_) => {
+                        saved.set("stored".into());
+                        note.set(String::new());
+                    }
+                    None => saved.set("empty note — nothing stored".into()),
+                }
+            },
+            "Remember"
+        }
+        if !saved().is_empty() {
+            p { style: format!("color:{MINT};font-size:12px;"), "{saved}" }
         }
     }
 }
@@ -230,17 +280,40 @@ fn ApprovalsPanel(backend: FieldBackend) -> Element {
 
 #[component]
 fn TimelinePanel(backend: FieldBackend) -> Element {
-    let entries = backend.timeline(30);
+    // Seed from the telemetry snapshot, then stream live bus events.
+    let mut live: Signal<Vec<String>> = use_signal(|| {
+        backend
+            .timeline(10)
+            .iter()
+            .map(|e| format!("[{}] {} — {}", e.at.format("%H:%M:%S"), e.kind, e.summary))
+            .collect()
+    });
+    {
+        let b = backend.clone();
+        use_future(move || {
+            let b = b.clone();
+            async move {
+                let mut rx = b.events.subscribe();
+                while let Ok(env) = rx.recv().await {
+                    let mut items = live.write();
+                    items.push(summarize_event(&env.event));
+                    while items.len() > 40 {
+                        items.remove(0);
+                    }
+                }
+            }
+        });
+    }
+    let items = live();
     rsx! {
         h2 { "Activity timeline" }
-        if entries.is_empty() {
+        p { style: format!("color:{MUTED};font-size:12px;"), "live stream · newest last" }
+        if items.is_empty() {
             p { style: format!("color:{MUTED};"), "Quiet — nothing recorded yet." }
         }
-        for e in entries {
-            div { style: format!("border-left:3px solid {};margin:6px;padding:4px 10px;", if e.ok == Some(false) { DANGER } else { MINT }),
-                key: "{e.at.to_string()}{e.summary}",
-                p { "{e.kind} — {e.summary}" }
-                p { style: format!("color:{MUTED};font-size:11px;"), "{e.at}" }
+        for (i, text) in items.iter().enumerate() {
+            div { style: format!("border-left:3px solid {MINT};margin:6px;padding:4px 10px;"), key: "{i}{text}",
+                p { "{text}" }
             }
         }
     }
@@ -250,14 +323,36 @@ fn TimelinePanel(backend: FieldBackend) -> Element {
 fn DevicesPanel(backend: FieldBackend) -> Element {
     let devices = backend.known_devices();
     let ips = backend.local_ips();
+    let mut scanning = use_signal(|| false);
+    let mut scan_note = use_signal(String::new);
     rsx! {
         h2 { "Devices" }
         div { style: card_style(),
             p { style: format!("color:{MUTED};"), "local interfaces: {ips.join(\", \")}" }
-            p { style: format!("color:{MUTED};"), "eco :53327 · fastswap :53317 · scan on demand" }
+            p { style: format!("color:{MUTED};"), "eco :53327 · fastswap :53317 · TLS proxy ready" }
+            button {
+                style: btn_style(true),
+                onclick: move |_| {
+                    if scanning() {
+                        return;
+                    }
+                    scanning.set(true);
+                    scan_note.set("scanning LAN…".into());
+                    let b = backend.clone();
+                    spawn(async move {
+                        let found = b.run_lan_scan().await;
+                        scan_note.set(format!("{} device(s) live", found.len()));
+                        scanning.set(false);
+                    });
+                },
+                if scanning() { "SCANNING…" } else { "SCAN LAN" }
+            }
+            if !scan_note().is_empty() {
+                p { style: format!("color:{MINT};font-size:12px;"), "{scan_note}" }
+            }
         }
         if devices.is_empty() {
-            p { style: format!("color:{MUTED};"), "No peers discovered yet — devices appear here after a LAN scan." }
+            p { style: format!("color:{MUTED};"), "No peers discovered yet — hit SCAN LAN." }
         }
         for d in devices {
             div { style: card_style(), key: "{d.ip}{d.name}",

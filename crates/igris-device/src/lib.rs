@@ -9,6 +9,9 @@ pub mod identity;
 pub mod message;
 pub mod pairing;
 pub mod server;
+pub mod store;
+pub mod sync;
+pub mod tls;
 pub mod transfer;
 pub mod trust;
 

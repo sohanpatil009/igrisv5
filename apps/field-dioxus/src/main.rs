@@ -18,5 +18,12 @@ fn root() -> Element {
 
 fn main() {
     BACKEND.set(FieldBackend::boot()).expect("boot once");
-    dioxus::launch(root);
+    // Title only: browser args stay out (env-provided) after they proved
+    // hostile to WebView2 creation when baked into the window config.
+    dioxus::LaunchBuilder::desktop()
+        .with_cfg(
+            dioxus::desktop::Config::new()
+                .with_window(dioxus::desktop::WindowBuilder::new().with_title("IGRIS FIELD")),
+        )
+        .launch(root);
 }

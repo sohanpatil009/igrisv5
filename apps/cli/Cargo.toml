@@ -17,3 +17,4 @@ igris-orchestrator = { path = "../../crates/igris-orchestrator" }
 igris-policy = { path = "../../crates/igris-policy" }
 igris-telemetry = { path = "../../crates/igris-telemetry" }
 igris-reflex = { path = "../../crates/igris-reflex" }
+igris-voice = { path = "../../crates/igris-voice" }
